@@ -1,0 +1,35 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Netlify Functions are mounted at /api/* via each function's `config.path`.
+# SPA fallback: deep links such as /movie/<id> must serve index.html.
+# Real files (assets, favicon) and function routes take precedence over this rule.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    # connect-src: Supabase (REST + realtime websocket), Cloudflare Stream (HLS + tus upload).
+    # img-src: Supabase Storage, TMDB images, and https posters entered by admins.
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https://*.cloudflarestream.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.cloudflarestream.com https://upload.videodelivery.net https://*.videodelivery.net; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
