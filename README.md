@@ -215,3 +215,5 @@ tests/                Vitest unit tests
 ## License
 
 Choose a license for your project (MIT or Apache-2.0 recommended).
+#   c i n e v a u l t  
+ 
