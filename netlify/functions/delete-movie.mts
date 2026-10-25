@@ -1,6 +1,6 @@
 import type { Config } from '@netlify/functions';
 import { z } from 'zod';
-import { deleteVideo } from '../lib/cloudflare';
+import { deleteAsset, cancelUpload } from '../lib/mux';
 import { HttpError, json, log, readJson, route } from '../lib/http';
 import { rateLimit, requireAdmin, supabaseAdmin } from '../lib/server';
 
@@ -15,12 +15,27 @@ export default route('POST', async (req) => {
   const sb = supabaseAdmin();
 
   const { data: movie, error } = await sb
-    .from('movies').select('id, video_asset_id').eq('id', parsed.data.movieId).maybeSingle();
+    .from('movies')
+    .select('id, video_asset_id, video_provider, upload_status')
+    .eq('id', parsed.data.movieId)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   if (!movie) throw new HttpError(404, 'Movie not found');
 
-  // Remove the video first; if that fails keep the row so the admin can retry.
-  if (movie.video_asset_id) await deleteVideo(movie.video_asset_id);
+  // Remove the Mux asset (or cancel the in-flight upload) before deleting the row
+  // so we don't leave orphaned assets at Mux.
+  // Cloudflare assets on legacy records are skipped — they would require
+  // CLOUDFLARE_* credentials which are no longer required.
+  if (movie.video_asset_id && movie.video_provider === 'mux') {
+    // If the movie is still uploading, video_asset_id holds the Mux upload ID
+    // (not yet an asset ID). Cancel the upload so Mux doesn't create an orphaned
+    // asset after the movie row is deleted.
+    if (movie.upload_status === 'uploading') {
+      await cancelUpload(movie.video_asset_id);
+    } else {
+      await deleteAsset(movie.video_asset_id);
+    }
+  }
 
   const { error: delErr } = await sb.from('movies').delete().eq('id', movie.id);
   if (delErr) throw new Error(delErr.message);

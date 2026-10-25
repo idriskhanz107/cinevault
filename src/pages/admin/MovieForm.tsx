@@ -127,7 +127,7 @@ export default function MovieForm() {
 
   const watchProcessing = (mid: string) => {
     clearInterval(poll.current);
-    setPhase('processing'); setStatusMsg('Cloudflare is processing the video…');
+    setPhase('processing'); setStatusMsg('Video is being processed…');
     poll.current = setInterval(() => {
       api.videoStatus(mid).then((r) => {
         if (r.status === 'ready') { clearInterval(poll.current); setPhase('ready'); setStatusMsg('Video is ready. You can now publish the movie.'); }

@@ -26,9 +26,13 @@ export interface VideoUploadHandle {
 }
 
 /**
- * Resumable upload straight to Cloudflare Stream using the one-time URL created by the
- * backend. The file never passes through Netlify. Interrupted uploads retry automatically
+ * Resumable upload to Mux using the one-time TUS URL created by the backend.
+ * The file never passes through Netlify. Interrupted uploads retry automatically
  * and can be resumed (same file) after a page reload via tus fingerprinting.
+ *
+ * Mux accepts: MP4, MOV, MKV, WebM, AVI and most common containers.
+ * MKV files with complex audio/subtitle tracks may require conversion to MP4
+ * for broadest compatibility — this is a Mux transcoding limitation.
  */
 export function uploadVideo(
   file: File,
@@ -41,7 +45,7 @@ export function uploadVideo(
   },
 ): VideoUploadHandle {
   const upload = new tus.Upload(file, {
-    // Cloudflare requires chunks to be a multiple of 256 KiB (min 5 MiB).
+    // Mux requires chunks of at least 5 MiB for TUS uploads.
     chunkSize: 50 * 1024 * 1024,
     uploadUrl,
     retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
